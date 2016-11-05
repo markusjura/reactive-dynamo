@@ -1,11 +1,13 @@
 package reactivedynamo.clients.producer
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, Cancellable, Props}
 import app.ItemGenerator
 import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
 import com.amazonaws.services.dynamodbv2.document.{DynamoDB, Item, TableWriteItems}
 import com.amazonaws.services.dynamodbv2.model.WriteRequest
+
+import scala.concurrent.duration._
 
 object DynamoDBClient {
 
@@ -16,12 +18,15 @@ object DynamoDBClient {
 
   case object StartWritingRandomData
   case object StopWritingRandomData
+
+  private case object WriteItems
 }
 
 class DynamoDBClient extends Actor with ActorSettings with ActorLogging {
 
-  import settings.db._
   import DynamoDBClient._
+  import settings.db._
+  import context.dispatcher
 
   private val ProductCatalogTableName = "ProductCatalog"
 
@@ -38,14 +43,25 @@ class DynamoDBClient extends Actor with ActorSettings with ActorLogging {
   helper.deleteTable(ProductCatalogTableName, db)
   helper.createTable(ProductCatalogTableName, 10L, 5L, "Id", "N", db)
 
-  override def receive: Receive = {
+  override def receive: Receive =
+    idle()
+
+  def idle(): Receive = {
     case StartWritingRandomData =>
+      val cancellable = context.system.scheduler.schedule(0.seconds, 200.millis, self, WriteItems)
+      context.become(processing(cancellable))
+  }
+
+  def processing(cancellable: Cancellable): Receive = {
+    case WriteItems =>
       val item = ItemGenerator.next
       log.info("Create new item: {}", item)
       writeItem(ProductCatalogTableName, ItemGenerator.next)
 
     case StopWritingRandomData =>
-      // TODO: Stop writing
+      log.info("Stop writing items..")
+      cancellable.cancel()
+      context.become(idle())
   }
 
   private def writeItem(tableName: String, item: Item): Unit = {
