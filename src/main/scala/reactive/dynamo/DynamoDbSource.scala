@@ -3,12 +3,13 @@ package reactive.dynamo
 import akka.NotUsed
 import akka.stream.{Attributes, Outlet, SourceShape}
 import akka.stream.scaladsl.Source
-import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
+import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler, TimerGraphStageLogic}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient
 import com.amazonaws.services.dynamodbv2.model._
 import com.amazonaws.services.dynamodbv2.model.Record
 import reactive.dynamo.EventName.{Insert, Modify, Remove}
+import scala.concurrent.duration._
 
 import scala.collection.JavaConverters
 import JavaConverters._
@@ -20,7 +21,7 @@ object DynamoDbSource {
       val recordOut = Outlet[Record]("recordOut")
       val shape: SourceShape[Record] = SourceShape(recordOut)
 
-      override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
+      override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimerGraphStageLogic(shape) {
 
         val streamsClient = new AmazonDynamoDBStreamsClient(new ProfileCredentialsProvider)
         streamsClient.setEndpoint(endpoint)
@@ -32,7 +33,6 @@ object DynamoDbSource {
         var nextIterator = nextIter()
         setHandler(recordOut, new OutHandler {
           override def onPull(): Unit = {
-
             doPoll
           }
         })
@@ -50,7 +50,12 @@ object DynamoDbSource {
               nextIterator = nextIter()
             case next => nextIterator = next
           }
+          if(records.isEmpty)
+            scheduleOnce("PullTimer",2 seconds)
+
         }
+
+        override def onTimer(timerKey: Any): Unit = doPoll
 
         def nextIter(): String = {
           val getShardIteratorRequest: GetShardIteratorRequest = new GetShardIteratorRequest()
