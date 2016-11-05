@@ -5,7 +5,7 @@ import akka.util.ByteString
 case class Record(awsRegion: String, eventId: String, eventName: EventName, payload: StreamRecord)
 
 case class StreamRecord(creationDate: Long, sequenceNumber: String, streamViewType: StreamViewType, keys: Item,
-                        newImage: Option[Item], oldImage: Option[Item])
+  newImage: Option[Item], oldImage: Option[Item])
 
 case class Item(attributes: Map[String, Attribute])
 
@@ -38,5 +38,4 @@ object StreamViewType {
   case object OldImage extends StreamViewType
   case object NewAndOldImage extends StreamViewType
 }
-
 
