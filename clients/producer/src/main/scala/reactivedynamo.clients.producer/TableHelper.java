@@ -1,5 +1,6 @@
-package app;
+package reactivedynamo.clients.producer;
 
+import akka.event.LoggingAdapter;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.*;
@@ -14,7 +15,13 @@ import java.util.ArrayList;
 
 public class TableHelper {
 
-    public  void createTable(
+    private LoggingAdapter log;
+
+    public TableHelper(LoggingAdapter log) {
+        this.log = log;
+    }
+
+    public void createTable(
             String tableName, long readCapacityUnits, long writeCapacityUnits,
             String partitionKeyName, String partitionKeyType , DynamoDB client) {
 
@@ -76,30 +83,29 @@ public class TableHelper {
 
             request.setAttributeDefinitions(attributeDefinitions);
 
-            System.out.println("Issuing CreateTable request for " + tableName);
+            log.info("Creating table {}", tableName);
             Table table = client.createTable(request);
-            System.out.println("Waiting for " + tableName
-                    + " to be created...this may take a while...");
             table.waitForActive();
+            log.info("Table {} has been created.", tableName);
 
         } catch (Exception e) {
-            System.err.println("CreateTable request failed for " + tableName);
-            System.err.println(e.getMessage());
+            log.error("CreateTable request failed for " + tableName);
+            log.error(e.getMessage());
         }
     }
 
     public void deleteTable(String tableName, DynamoDB db) {
         Table table = db.getTable(tableName);
         try {
-            System.out.println("Issuing DeleteTable request for " + tableName);
+            log.info("Issuing DeleteTable request for " + tableName);
             table.delete();
-            System.out.println("Waiting for " + tableName
+            log.info("Waiting for " + tableName
                     + " to be deleted...this may take a while...");
             table.waitForDelete();
 
         } catch (Exception e) {
-            System.err.println("DeleteTable request failed for " + tableName);
-            System.err.println(e.getMessage());
+            log.error("DeleteTable request failed for " + tableName);
+            log.error(e.getMessage());
         }
     }
 }
