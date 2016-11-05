@@ -12,7 +12,7 @@ import java.util.ArrayList;
  */
 
 
-public class CreateTableHelper {
+public class TableHelper {
 
     public  void createTable(
             String tableName, long readCapacityUnits, long writeCapacityUnits,
@@ -84,6 +84,21 @@ public class CreateTableHelper {
 
         } catch (Exception e) {
             System.err.println("CreateTable request failed for " + tableName);
+            System.err.println(e.getMessage());
+        }
+    }
+
+    public void deleteTable(String tableName, DynamoDB db) {
+        Table table = db.getTable(tableName);
+        try {
+            System.out.println("Issuing DeleteTable request for " + tableName);
+            table.delete();
+            System.out.println("Waiting for " + tableName
+                    + " to be deleted...this may take a while...");
+            table.waitForDelete();
+
+        } catch (Exception e) {
+            System.err.println("DeleteTable request failed for " + tableName);
             System.err.println(e.getMessage());
         }
     }
