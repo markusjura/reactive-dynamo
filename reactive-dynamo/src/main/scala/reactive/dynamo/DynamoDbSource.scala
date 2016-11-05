@@ -89,19 +89,25 @@ object DynamoDbSource {
           val streamRecord = StreamRecord(awsStreamRecord.getApproximateCreationDateTime,
             awsStreamRecord.getSequenceNumber,
             mapStreamViewType(awsStreamRecord),
-            mapKeys(awsStreamRecord.getKeys.asScala.toMap), None, None)
+            mapAttributeMap(awsStreamRecord.getKeys.asScala.toMap),
+            Option(awsStreamRecord.getNewImage).map(i => mapAttributeMap(i.asScala.toMap)),
+            Option(awsStreamRecord.getOldImage).map(i => mapAttributeMap(i.asScala.toMap)))
 
           Record(awsRecord.getAwsRegion, awsRecord.getEventID, mapEventName(awsRecord), streamRecord)
         }
 
-        def mapKeys(keys: Map[String, AttributeValue]): Item = {
+        def mapAttributeMap(keys: Map[String, AttributeValue]): Item = {
           def toNumber(s: String): Number = Try(BigDecimal(s)).getOrElse(BigDecimal(0))
+          def toNumberList(ns: Seq[String]): Seq[Number] = ns.map(toNumber)
 
           val attributes = keys.map {
             case (key, value) =>
               val newValue = Option(value.getS).map(StringAttribute).
                 orElse(Option(value.getBOOL).map(BooleanAttribute(_))).
-                orElse(Option(value.getN).map(n => NumberAttribute.apply(toNumber(n)))).orNull
+                orElse(Option(value.getN).map(n => NumberAttribute.apply(toNumber(n)))).
+                orElse(Option(value.getNS).map(ns => NumberSetAttribute(toNumberList(ns.asScala)))).
+                orElse(Option(value.getSS).map(ss => StringSetAttribute(ss.asScala))).
+                orNull
               (key, newValue)
           }
           Item(attributes)
@@ -120,9 +126,9 @@ object DynamoDbSource {
 
   def mapStreamViewType(awsStreamRecord: com.amazonaws.services.dynamodbv2.model.StreamRecord): StreamViewType with Product with Serializable = {
     awsStreamRecord.getStreamViewType match {
-      case "KEYS_ONLY" => KeysOnly
-      case "NEW_IMAGE" => NewImage
-      case "OLD_IMAGE" => OldImage
+      case "KEYS_ONLY"          => KeysOnly
+      case "NEW_IMAGE"          => NewImage
+      case "OLD_IMAGE"          => OldImage
       case "NEW_AND_OLD_IMAGES" => NewAndOldImages
     }
   }
