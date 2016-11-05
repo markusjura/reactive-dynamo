@@ -5,6 +5,7 @@ import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
 import com.amazonaws.services.dynamodbv2.document.{ DynamoDB, Item, TableWriteItems }
 import com.amazonaws.services.dynamodbv2.model.WriteRequest
+import reactive.dynamo.DynamoDbSource
 
 object DynamoDBClient {
 
@@ -13,13 +14,14 @@ object DynamoDBClient {
   def props: Props =
     Props(new DynamoDBClient)
 
-  case object StreamEvents
+  case object GetStream
 }
 
 class DynamoDBClient extends Actor with ActorSettings with ActorLogging {
 
   import settings.db._
   import DynamoDBClient._
+  import context.dispatcher
 
   private val ProductCatalogTableName = "ProductCatalog"
 
@@ -28,31 +30,16 @@ class DynamoDBClient extends Actor with ActorSettings with ActorLogging {
     override def getAWSSecretKey: String = "qweqwe"
   }
 
+  val endpoint = s"http://$ip:$port"
   private val client = new AmazonDynamoDBClient(credentials)
-  client.withEndpoint(s"http://$ip:$port")
+  client.withEndpoint(endpoint)
   private val db = new DynamoDB(client)
 
   override def receive: Receive = {
-    case StreamEvents =>
-      log.info("Stream events..:")
-  }
-
-  private def writeItem(tableName: String, item: Item): Unit = {
-    def writeUnprocessedItems(unprocessedItems: java.util.Map[String, java.util.List[WriteRequest]]): Unit = {
-      if (!unprocessedItems.isEmpty) {
-        val result = db.batchWriteItemUnprocessed(unprocessedItems)
-        log.info("Unprocessed item size: {}", result.getUnprocessedItems.size())
-        writeUnprocessedItems(result.getUnprocessedItems)
-      }
-    }
-    try {
-      val writeItems = new TableWriteItems(tableName).withItemsToPut(item)
-      val result = db.batchWriteItem(writeItems)
-      writeUnprocessedItems(result.getUnprocessedItems)
-
-    } catch {
-      case e: Exception =>
-        log.error("Failed to write items with error: {}", e.getMessage)
-    }
+    case GetStream =>
+      log.info("Stream events..")
+      val describeTableResult = client.describeTable(ProductCatalogTableName)
+      val streamArn = describeTableResult.getTable.getLatestStreamArn
+      sender() ! DynamoDbSource(streamArn, endpoint)
   }
 }

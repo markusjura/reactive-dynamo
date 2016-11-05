@@ -35,5 +35,5 @@ lazy val consumerClient = Project(
 
 lazy val producerClient = Project(
   id = "producer-client",
-  base = file("producer/consumer")
+  base = file("clients/producer")
 ).settings(formatterSettings)

@@ -1,10 +1,10 @@
 package reactivedynamo.clients.producer
 
-import akka.actor.Actor.{emptyBehavior}
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.Actor.{ emptyBehavior }
+import akka.actor.{ Actor, ActorLogging, ActorRef, Props }
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
-import akka.http.scaladsl.server.{Directives, Route}
+import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
+import akka.http.scaladsl.server.{ Directives, Route }
 import akka.stream.ActorMaterializer
 
 import scala.concurrent.Future
@@ -41,15 +41,15 @@ class ProducerClient(dynamoDBClient: ActorRef) extends Actor with ActorLogging w
         }
       }
     } ~
-    pathPrefix("stop") {
-      pathEndOrSingleSlash {
-        get {
-          complete {
-            stop()
+      pathPrefix("stop") {
+        pathEndOrSingleSlash {
+          get {
+            complete {
+              stop()
+            }
           }
         }
       }
-    }
   }
 
   private def start(): Future[HttpResponse] = {

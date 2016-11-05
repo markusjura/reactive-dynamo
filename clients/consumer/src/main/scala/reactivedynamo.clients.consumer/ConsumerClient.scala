@@ -1,13 +1,19 @@
 package reactivedynamo.clients.consumer
 
-import akka.actor.Actor.{ emptyBehavior }
+import akka.NotUsed
+import akka.actor.Actor.emptyBehavior
 import akka.actor.{ Actor, ActorLogging, ActorRef, Props }
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.{ Directives, Route }
 import akka.stream.ActorMaterializer
+import akka.pattern._
+import akka.stream.scaladsl.Source
+import akka.util.{ ByteString, Timeout }
+import reactive.dynamo.Record
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 object ConsumerClient {
   final val Name = "consumer-client"
@@ -19,6 +25,7 @@ object ConsumerClient {
 class ConsumerClient(dynamoDBClient: ActorRef) extends Actor with ActorLogging with ActorSettings {
 
   import settings.client._
+  import context.dispatcher
 
   private implicit val mat = ActorMaterializer()
 
@@ -42,8 +49,15 @@ class ConsumerClient(dynamoDBClient: ActorRef) extends Actor with ActorLogging w
   }
 
   private def streamEvents(): Future[HttpResponse] = {
-    dynamoDBClient ! DynamoDBClient.StreamEvents
-    Future.successful(HttpResponse(StatusCodes.NoContent))
+    implicit val timeout = Timeout(500.millis)
+    dynamoDBClient
+      .ask(DynamoDBClient.GetStream)
+      .mapTo[Source[Record, NotUsed]]
+      .map { source =>
+        val eventLines = source
+          .map(record => ByteString(record.toString + "\n"))
+        HttpResponse(entity = HttpEntity.Chunked.fromData(ContentTypes.`text/plain(UTF-8)`, eventLines))
+      }
   }
 
   override def receive: Receive =

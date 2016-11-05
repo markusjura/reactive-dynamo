@@ -1,12 +1,12 @@
 package reactivedynamo.clients.producer
 
-import akka.actor.{Actor, ExtendedActorSystem, Extension, ExtensionKey}
+import akka.actor.{ Actor, ExtendedActorSystem, Extension, ExtensionKey }
 
 object Settings extends ExtensionKey[Settings]
 
 /**
-  * Settings for producer client
-  */
+ * Settings for producer client
+ */
 class Settings(system: ExtendedActorSystem) extends Extension {
 
   object client {

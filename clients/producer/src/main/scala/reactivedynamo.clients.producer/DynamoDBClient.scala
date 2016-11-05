@@ -1,10 +1,10 @@
 package reactivedynamo.clients.producer
 
-import akka.actor.{Actor, ActorLogging, Cancellable, Props}
+import akka.actor.{ Actor, ActorLogging, Cancellable, Props }
 import app.ItemGenerator
 import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
-import com.amazonaws.services.dynamodbv2.document.{DynamoDB, Item, TableWriteItems}
+import com.amazonaws.services.dynamodbv2.document.{ DynamoDB, Item, TableWriteItems }
 import com.amazonaws.services.dynamodbv2.model.WriteRequest
 
 import scala.concurrent.duration._
@@ -66,7 +66,7 @@ class DynamoDBClient extends Actor with ActorSettings with ActorLogging {
 
   private def writeItem(tableName: String, item: Item): Unit = {
     def writeUnprocessedItems(unprocessedItems: java.util.Map[String, java.util.List[WriteRequest]]): Unit = {
-      if(!unprocessedItems.isEmpty) {
+      if (!unprocessedItems.isEmpty) {
         val result = db.batchWriteItemUnprocessed(unprocessedItems)
         log.info("Unprocessed item size: {}", result.getUnprocessedItems.size())
         writeUnprocessedItems(result.getUnprocessedItems)

@@ -56,9 +56,14 @@ public class TableHelper {
                         .withAttributeType(sortKeyType));
             }
 
+            StreamSpecification streamSpecification = new StreamSpecification();
+            streamSpecification.setStreamEnabled(true);
+            streamSpecification.setStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES);
+
             CreateTableRequest request = new CreateTableRequest()
                     .withTableName(tableName)
                     .withKeySchema(keySchema)
+                    .withStreamSpecification(streamSpecification)
                     .withProvisionedThroughput( new ProvisionedThroughput()
                             .withReadCapacityUnits(readCapacityUnits)
                             .withWriteCapacityUnits(writeCapacityUnits));

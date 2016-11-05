@@ -1,6 +1,6 @@
 package reactivedynamo.clients.producer
 
-import akka.actor.{Actor, ActorLogging, Props, Terminated}
+import akka.actor.{ Actor, ActorLogging, Props, Terminated }
 
 object Reaper {
   final val Name = "reaper"

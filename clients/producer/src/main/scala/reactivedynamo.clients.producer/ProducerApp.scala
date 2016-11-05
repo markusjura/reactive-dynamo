@@ -1,8 +1,8 @@
 package reactivedynamo.clients.producer
 
-import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.util.concurrent.{ CountDownLatch, TimeUnit }
 import scala.concurrent.duration._
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ ActorRef, ActorSystem }
 
 object ProducerApp extends App {
 
