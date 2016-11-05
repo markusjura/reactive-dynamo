@@ -1,19 +1,22 @@
 package reactive.dynamo
 
+import java.util
+
 import akka.NotUsed
 import akka.stream.{Attributes, Outlet, SourceShape}
 import akka.stream.scaladsl.Source
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler, TimerGraphStageLogic}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient
-import com.amazonaws.services.dynamodbv2.model._
-import com.amazonaws.services.dynamodbv2.model.Record
+import com.amazonaws.services.dynamodbv2.model.{Record, StreamRecord, _}
 import reactive.dynamo.EventName.{Insert, Modify, Remove}
+import reactive.dynamo.StreamViewType.{KeysOnly, NewAndOldImages, NewImage, OldImage}
 
 import scala.concurrent.duration._
 import scala.collection.JavaConverters
 import JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, blocking}
+import scala.util.Try
 
 
 object DynamoDbSource {
@@ -77,14 +80,43 @@ object DynamoDbSource {
         }
 
         def mapRecord(awsRecord: com.amazonaws.services.dynamodbv2.model.Record) : Record = {
-          val eventName = awsRecord.getEventName match {
-            case "INSERT" => Insert
-            case "MODIFY" => Modify
-            case "REMOVE" => Remove
-          }
-          Record(awsRecord.getAwsRegion, awsRecord.getEventID, eventName, null)
+          val awsStreamRecord = awsRecord.getDynamodb
+          val streamRecord = StreamRecord(awsStreamRecord.getApproximateCreationDateTime,
+            awsStreamRecord.getSequenceNumber,
+            mapStreamViewType(awsStreamRecord),
+            mapKeys(awsStreamRecord.getKeys.asScala.toMap), None, None)
+
+          Record(awsRecord.getAwsRegion, awsRecord.getEventID, mapEventName(awsRecord), streamRecord)
+        }
+
+        def mapKeys(keys: Map[String, AttributeValue]): Item = {
+          def toNumber(s:String): Number = Try(BigDecimal(s)).getOrElse(BigDecimal(0))
+
+          val attributes = keys.map{case (key, value) =>
+            val newValue = Option(value.getS).map(StringAttribute).
+              orElse(Option(value.getBOOL).map(BooleanAttribute(_))).
+              orElse(Option(value.getN).map( n =>  NumberAttribute.apply(toNumber(n)))).orNull
+            (key, newValue)}
+          Item(attributes)
         }
       }
     })
+  }
+
+  def mapEventName(awsRecord: com.amazonaws.services.dynamodbv2.model.Record): EventName with Product with Serializable = {
+    awsRecord.getEventName match {
+      case "INSERT" => Insert
+      case "MODIFY" => Modify
+      case "REMOVE" => Remove
+    }
+  }
+
+  def mapStreamViewType(awsStreamRecord: com.amazonaws.services.dynamodbv2.model.StreamRecord): StreamViewType with Product with Serializable = {
+    awsStreamRecord.getStreamViewType match {
+      case "KEYS_ONLY" => KeysOnly
+      case "NEW_IMAGE" => NewImage
+      case "OLD_IMAGE" => OldImage
+      case "NEW_AND_OLD_IMAGES" => NewAndOldImages
+    }
   }
 }
