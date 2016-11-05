@@ -9,20 +9,20 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient
 import com.amazonaws.services.dynamodbv2.model._
 import com.amazonaws.services.dynamodbv2.model.Record
 import reactive.dynamo.EventName.{Insert, Modify, Remove}
-import scala.concurrent.duration._
 
+import scala.concurrent.duration._
 import scala.collection.JavaConverters
 import JavaConverters._
+import scala.concurrent.{ExecutionContext, Future, blocking}
 
 
 object DynamoDbSource {
-  def apply(streamArn: String, endpoint: String): Source[Record, NotUsed] = {
+  def apply(streamArn: String, endpoint: String)(implicit executionContext: ExecutionContext): Source[Record, NotUsed] = {
     Source.fromGraph(new GraphStage[SourceShape[Record]] {
       val recordOut = Outlet[Record]("recordOut")
       val shape: SourceShape[Record] = SourceShape(recordOut)
 
       override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimerGraphStageLogic(shape) {
-
         val streamsClient = new AmazonDynamoDBStreamsClient(new ProfileCredentialsProvider)
         streamsClient.setEndpoint(endpoint)
         val describeStreamResult: DescribeStreamResult = streamsClient.describeStream(new DescribeStreamRequest().withStreamArn(streamArn))
@@ -37,25 +37,36 @@ object DynamoDbSource {
           }
         })
 
-        def doPoll: Unit = {
-          val getRecordsResult: GetRecordsResult = streamsClient.getRecords(new GetRecordsRequest().withShardIterator(nextIterator))
-          val records: List[Record] = getRecordsResult.getRecords.asScala.toList.map(mapRecord)
+        def handleRecords(recordsResult: GetRecordsResult): Unit = {
+          val records: List[Record] = recordsResult.getRecords.asScala.toList.map(mapRecord)
           println("Getting records...")
           println(s"found ${records.size}")
 
           emitMultiple(recordOut, records)
-          getRecordsResult.getNextShardIterator match {
+          recordsResult.getNextShardIterator match {
             case null =>
               shards = shards.tail
+              println(s"now using shard ${currentShard.getShardId}")
               nextIterator = nextIter()
             case next => nextIterator = next
           }
           if(records.isEmpty)
-            scheduleOnce("PullTimer",2 seconds)
+            if (currentShard.getSequenceNumberRange.getEndingSequenceNumber == null)
+              scheduleOnce("PullTimer", 2 seconds)
+            else
+              doPoll
+        }
 
+        def getRecordsResult: Future[GetRecordsResult] = {
+          Future(blocking{streamsClient.getRecords(new GetRecordsRequest().withShardIterator(nextIterator))})
         }
 
         override def onTimer(timerKey: Any): Unit = doPoll
+
+        def doPoll: Unit = {
+          val callback = getAsyncCallback(handleRecords)
+          getRecordsResult.foreach(callback.invoke)
+        }
 
         def nextIter(): String = {
           val getShardIteratorRequest: GetShardIteratorRequest = new GetShardIteratorRequest()
