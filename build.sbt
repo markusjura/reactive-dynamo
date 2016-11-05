@@ -1,22 +1,39 @@
+import sbt.Keys.scalaVersion
+
 import scalariform.formatter.preferences._
 
-name := """reactive-dynamo"""
+inThisBuild(Seq(
+  version := "0.1",
+  scalaVersion := "2.11.8"
+))
 
-version := "0.1"
+val formatterSettings = Seq(
+  ScalariformKeys.preferences := ScalariformKeys.preferences.value
+    .setPreference(AlignSingleLineCaseStatements, true)
+    .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 100)
+    .setPreference(DoubleIndentClassDeclaration, true)
+    .setPreference(PreserveDanglingCloseParenthesis, true)
+) ++ scalariformSettings
 
-scalaVersion := "2.11.8"
+lazy val root =
+  Project(
+    id = "reactive-dynamo-ROOT",
+    base = file(".")
+  ).aggregate(reactiveDynamo, consumerClient, producerClient)
 
-libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-stream" % "2.4.12",
-  "com.amazonaws" % "aws-java-sdk" % "1.11.49"
+lazy val reactiveDynamo = Project(
+  id = "reactiveDynamo",
+  base = file("reactive-dynamo")
+).settings(formatterSettings)
+
+lazy val consumerClient = Project(
+  id = "consumer-client",
+  base = file("clients/consumer")
 )
+  .settings(formatterSettings)
+  .dependsOn(reactiveDynamo)
 
-scalariformSettings
-
-ScalariformKeys.preferences := ScalariformKeys.preferences.value
-  .setPreference(AlignSingleLineCaseStatements, true)
-  .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 100)
-  .setPreference(DoubleIndentClassDeclaration, true)
-  .setPreference(PreserveDanglingCloseParenthesis, true)
-
-fork in run := true
+lazy val producerClient = Project(
+  id = "producer-client",
+  base = file("producer/consumer")
+).settings(formatterSettings)

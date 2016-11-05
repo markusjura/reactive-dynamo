@@ -1,9 +1,9 @@
 package reactivedynamo.clients.consumer
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{ Actor, ActorLogging, Props }
 import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
-import com.amazonaws.services.dynamodbv2.document.{DynamoDB, Item, TableWriteItems}
+import com.amazonaws.services.dynamodbv2.document.{ DynamoDB, Item, TableWriteItems }
 import com.amazonaws.services.dynamodbv2.model.WriteRequest
 
 object DynamoDBClient {
@@ -39,7 +39,7 @@ class DynamoDBClient extends Actor with ActorSettings with ActorLogging {
 
   private def writeItem(tableName: String, item: Item): Unit = {
     def writeUnprocessedItems(unprocessedItems: java.util.Map[String, java.util.List[WriteRequest]]): Unit = {
-      if(!unprocessedItems.isEmpty) {
+      if (!unprocessedItems.isEmpty) {
         val result = db.batchWriteItemUnprocessed(unprocessedItems)
         log.info("Unprocessed item size: {}", result.getUnprocessedItems.size())
         writeUnprocessedItems(result.getUnprocessedItems)
