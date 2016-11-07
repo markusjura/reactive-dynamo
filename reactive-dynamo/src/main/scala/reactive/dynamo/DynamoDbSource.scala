@@ -25,15 +25,15 @@ import EventName._
 import StreamViewType._
 
 object DynamoDbSource {
-  def apply(streamArn: String, endpoint: String)(implicit executionContext: ExecutionContext): Source[Record, NotUsed] = {
+  def apply(config: DynamoDbSourceConfig)(implicit executionContext: ExecutionContext): Source[Record, NotUsed] = {
     Source.fromGraph(new GraphStage[SourceShape[Record]] {
       val recordOut = Outlet[Record]("recordOut")
       val shape: SourceShape[Record] = SourceShape(recordOut)
 
       override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimerGraphStageLogic(shape) {
-        val streamsClient = new AmazonDynamoDBStreamsClient(new ProfileCredentialsProvider)
-        streamsClient.setEndpoint(endpoint)
-        val describeStreamResult: DescribeStreamResult = streamsClient.describeStream(new DescribeStreamRequest().withStreamArn(streamArn))
+
+        config.client.setEndpoint(config.endpoint)
+        val describeStreamResult: DescribeStreamResult = config.client.describeStream(new DescribeStreamRequest().withStreamArn(config.streamArn))
         var shards: List[Shard] = describeStreamResult.getStreamDescription.getShards.asScala.toList
         def currentShard = shards.head
         println(s"found shards ${shards.size}")
@@ -66,7 +66,7 @@ object DynamoDbSource {
         }
 
         def getRecordsResult: Future[GetRecordsResult] = {
-          Future(blocking { streamsClient.getRecords(new GetRecordsRequest().withShardIterator(nextIterator)) })
+          Future(blocking { config.client.getRecords(new GetRecordsRequest().withShardIterator(nextIterator)) })
         }
 
         override def onTimer(timerKey: Any): Unit = doPoll
@@ -78,10 +78,10 @@ object DynamoDbSource {
 
         def nextIter(): String = {
           val getShardIteratorRequest: GetShardIteratorRequest = new GetShardIteratorRequest()
-            .withStreamArn(streamArn)
+            .withStreamArn(config.streamArn)
             .withShardId(currentShard.getShardId)
             .withShardIteratorType(ShardIteratorType.TRIM_HORIZON)
-          streamsClient.getShardIterator(getShardIteratorRequest).getShardIterator
+          config.client.getShardIterator(getShardIteratorRequest).getShardIterator
         }
 
         def mapRecord(awsRecord: com.amazonaws.services.dynamodbv2.model.Record): Record = {
@@ -126,9 +126,9 @@ object DynamoDbSource {
 
   def mapStreamViewType(awsStreamRecord: com.amazonaws.services.dynamodbv2.model.StreamRecord): StreamViewType with Product with Serializable = {
     awsStreamRecord.getStreamViewType match {
-      case "KEYS_ONLY"          => KeysOnly
-      case "NEW_IMAGE"          => NewImage
-      case "OLD_IMAGE"          => OldImage
+      case "KEYS_ONLY" => KeysOnly
+      case "NEW_IMAGE" => NewImage
+      case "OLD_IMAGE" => OldImage
       case "NEW_AND_OLD_IMAGES" => NewAndOldImages
     }
   }

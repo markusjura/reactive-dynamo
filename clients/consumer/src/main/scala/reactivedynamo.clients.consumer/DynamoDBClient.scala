@@ -2,10 +2,10 @@ package reactivedynamo.clients.consumer
 
 import akka.actor.{ Actor, ActorLogging, Props }
 import com.amazonaws.auth.AWSCredentials
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
+import com.amazonaws.services.dynamodbv2.{ AmazonDynamoDBClient, AmazonDynamoDBStreamsClient }
 import com.amazonaws.services.dynamodbv2.document.{ DynamoDB, Item, TableWriteItems }
 import com.amazonaws.services.dynamodbv2.model.WriteRequest
-import reactive.dynamo.DynamoDbSource
+import reactive.dynamo.{ DynamoDbSource, DynamoDbSourceConfig }
 
 object DynamoDBClient {
 
@@ -30,16 +30,21 @@ class DynamoDBClient extends Actor with ActorSettings with ActorLogging {
     override def getAWSSecretKey: String = "qweqwe"
   }
 
+  //todo
+
   val endpoint = s"http://$ip:$port"
-  private val client = new AmazonDynamoDBClient(credentials)
-  client.withEndpoint(endpoint)
-  private val db = new DynamoDB(client)
+  private val streamClient = new AmazonDynamoDBStreamsClient(credentials)
+  private val nonStreamClient = new AmazonDynamoDBClient(credentials)
+  streamClient.withEndpoint(endpoint)
+  nonStreamClient.withEndpoint(endpoint)
+  private val db = new DynamoDB(nonStreamClient)
 
   override def receive: Receive = {
     case GetStream =>
       log.info("Stream events..")
-      val describeTableResult = client.describeTable(ProductCatalogTableName)
+      val describeTableResult = nonStreamClient.describeTable(ProductCatalogTableName)
       val streamArn = describeTableResult.getTable.getLatestStreamArn
-      sender() ! DynamoDbSource(streamArn, endpoint)
+      val sourceConfig = DynamoDbSourceConfig(streamArn, endpoint, streamClient)
+      sender() ! DynamoDbSource(sourceConfig)
   }
 }
