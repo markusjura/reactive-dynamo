@@ -26,11 +26,10 @@ class DynamoDBClient extends Actor with ActorSettings with ActorLogging {
   private val ProductCatalogTableName = "ProductCatalog"
 
   private val credentials = new AWSCredentials {
-    override def getAWSAccessKeyId: String = "qweqwe"
-    override def getAWSSecretKey: String = "qweqwe"
+    override def getAWSAccessKeyId: String = awsSecretKey
+    override def getAWSSecretKey: String = awsAccessKeyId
   }
 
-  //todo
 
   val endpoint = s"http://$ip:$port"
   private val streamClient = new AmazonDynamoDBStreamsClient(credentials)

@@ -31,8 +31,6 @@ object DynamoDbSource {
       val shape: SourceShape[Record] = SourceShape(recordOut)
 
       override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimerGraphStageLogic(shape) {
-
-        config.client.setEndpoint(config.endpoint)
         val describeStreamResult: DescribeStreamResult = config.client.describeStream(new DescribeStreamRequest().withStreamArn(config.streamArn))
         var shards: List[Shard] = describeStreamResult.getStreamDescription.getShards.asScala.toList
         def currentShard = shards.head
@@ -60,7 +58,7 @@ object DynamoDbSource {
           }
           if (records.isEmpty)
             if (currentShard.getSequenceNumberRange.getEndingSequenceNumber == null)
-              scheduleOnce("PullTimer", 2 seconds)
+              scheduleOnce("PullTimer", 2.seconds)
             else
               doPoll
         }
