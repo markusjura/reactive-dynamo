@@ -5,11 +5,11 @@ import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient
 
 
-trait TestConfig {
+object TestConfig {
   implicit lazy val system = akka.actor.ActorSystem("DynamoDBTestingSystem")
   implicit lazy val materializer = akka.stream.ActorMaterializer()
 
-  object Executor {
+  trait Executor {
     protected implicit val executor = system.dispatcher
     protected implicit val log = Logging(system, "DynamoDBTestingSystem-Logger")
   }
