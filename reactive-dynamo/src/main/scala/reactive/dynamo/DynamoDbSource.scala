@@ -24,17 +24,21 @@ import scala.util.Try
 import EventName._
 import StreamViewType._
 
-object DynamoDbSource {
-  def apply(config: DynamoDbSourceConfig)(implicit executionContext: ExecutionContext): Source[Record, NotUsed] = {
+object DynamoDBSource {
+  def apply(config: DynamoDBSourceConfig)(implicit executionContext: ExecutionContext): Source[Record, NotUsed] = {
     Source.fromGraph(new GraphStage[SourceShape[Record]] {
+      // Creating
       val recordOut = Outlet[Record]("recordOut")
       val shape: SourceShape[Record] = SourceShape(recordOut)
 
       override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimerGraphStageLogic(shape) {
+        val describeStreamResult: DescribeStreamResult =
+          config.client.describeStream(new DescribeStreamRequest().withStreamArn(config.streamArn))
 
-        config.client.setEndpoint(config.endpoint)
-        val describeStreamResult: DescribeStreamResult = config.client.describeStream(new DescribeStreamRequest().withStreamArn(config.streamArn))
-        var shards: List[Shard] = describeStreamResult.getStreamDescription.getShards.asScala.toList
+        var shards: scala.collection.immutable.Stream[Shard] =
+          describeStreamResult.getStreamDescription.getShards.asScala.toStream
+
+        // todo here head option and recover mechanism + tests
         def currentShard = shards.head
         println(s"found shards ${shards.size}")
 
@@ -60,7 +64,7 @@ object DynamoDbSource {
           }
           if (records.isEmpty)
             if (currentShard.getSequenceNumberRange.getEndingSequenceNumber == null)
-              scheduleOnce("PullTimer", 2 seconds)
+              scheduleOnce("PullTimer", 2.seconds)
             else
               doPoll
         }
