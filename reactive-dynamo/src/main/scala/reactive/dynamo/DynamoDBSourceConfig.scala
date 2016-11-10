@@ -5,7 +5,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient
 
 
 
-object DynamoDbSourceConfig {
+object DynamoDBSourceConfig {
 
   /**
     *
