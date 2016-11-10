@@ -23,6 +23,11 @@ class Settings(system: ExtendedActorSystem) extends Extension {
 
     val port: Int =
       consumer.getInt("db.port")
+
+    val awsSecretKey: String = consumer.getString("AWSSecretKey")
+
+    val awsAccessKeyId: String = consumer.getString("AWSAccessKeyId")
+
   }
 
   private lazy val config = system.settings.config

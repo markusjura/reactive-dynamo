@@ -39,6 +39,7 @@ object DynamoDBSource {
           describeStreamResult.getStreamDescription.getShards.asScala.toStream
 
         // todo here head option and recover mechanism + tests
+
         def currentShard = shards.head
         println(s"found shards ${shards.size}")
 
