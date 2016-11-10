@@ -1,13 +1,16 @@
 package reactivedynamo.clients.consumer
 
-import akka.actor.{ Actor, ExtendedActorSystem, Extension, ExtensionKey }
+import akka.actor.{Actor, ExtendedActorSystem, Extension, ExtensionKey}
 
 object Settings extends ExtensionKey[Settings]
 
 /**
- * Settings for producer client
- */
+  * Settings for producer client
+  */
 class Settings(system: ExtendedActorSystem) extends Extension {
+
+  private lazy val config = system.settings.config
+  private lazy val consumer = config.getConfig("consumer")
 
   object client {
     val ip: String =
@@ -24,14 +27,12 @@ class Settings(system: ExtendedActorSystem) extends Extension {
     val port: Int =
       consumer.getInt("db.port")
 
-    val awsSecretKey: String = consumer.getString("AWSSecretKey")
+    val awsSecretKey: String = consumer.getString("db.AWSSecretKey")
 
-    val awsAccessKeyId: String = consumer.getString("AWSAccessKeyId")
+    val awsAccessKeyId: String = consumer.getString("db.AWSAccessKeyId")
 
   }
 
-  private lazy val config = system.settings.config
-  private lazy val consumer = config.getConfig("consumer")
 }
 
 trait ActorSettings {

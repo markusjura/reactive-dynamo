@@ -48,7 +48,7 @@ class DynamoDBClient extends Actor with ActorSettings with ActorLogging {
 
   def idle(): Receive = {
     case StartWritingRandomData =>
-      val cancellable = context.system.scheduler.schedule(0.seconds, 200.millis, self, WriteItems)
+      val cancellable = context.system.scheduler.schedule(0.seconds, 1.millis, self, WriteItems)
       context.become(processing(cancellable))
   }
 
@@ -76,7 +76,6 @@ class DynamoDBClient extends Actor with ActorSettings with ActorLogging {
       val writeItems = new TableWriteItems(tableName).withItemsToPut(item)
       val result = db.batchWriteItem(writeItems)
       writeUnprocessedItems(result.getUnprocessedItems)
-
     } catch {
       case e: Exception =>
         log.error("Failed to write items with error: {}", e.getMessage)

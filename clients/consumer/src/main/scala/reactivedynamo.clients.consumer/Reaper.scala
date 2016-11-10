@@ -1,6 +1,7 @@
 package reactivedynamo.clients.consumer
 
-import akka.actor.{ Actor, ActorLogging, Props, Terminated }
+import akka.actor.{Actor, ActorLogging, Props, Terminated}
+import akka.routing.RoundRobinPool
 
 object Reaper {
   final val Name = "reaper"
@@ -14,7 +15,7 @@ class Reaper extends Actor with ActorLogging {
   override def preStart(): Unit = {
     super.preStart()
 
-    val dynamoDBClient = context.watch(context.actorOf(DynamoDBClient.props, DynamoDBClient.Name))
+    val dynamoDBClient = context.watch(context.actorOf(DynamoDBClient.props.withRouter(RoundRobinPool(10)), DynamoDBClient.Name))
     context.watch(context.actorOf(ConsumerClient.props(dynamoDBClient), ConsumerClient.Name))
   }
 
