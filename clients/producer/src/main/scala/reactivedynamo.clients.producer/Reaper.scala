@@ -1,6 +1,6 @@
 package reactivedynamo.clients.producer
 
-import akka.actor.{Actor, ActorLogging, Props, Terminated}
+import akka.actor.{ Actor, ActorLogging, Props, Terminated }
 import akka.routing.RoundRobinPool
 
 object Reaper {
@@ -13,10 +13,6 @@ object Reaper {
 class Reaper extends Actor with ActorLogging {
 
   override def preStart(): Unit = {
-    //super.preStart()
-
-
-
     val dynamoDBClient = context.watch(context.actorOf(DynamoDBClient.props.withRouter(RoundRobinPool(30)), DynamoDBClient.Name))
     context.watch(context.actorOf(ProducerClient.props(dynamoDBClient), ProducerClient.Name))
   }

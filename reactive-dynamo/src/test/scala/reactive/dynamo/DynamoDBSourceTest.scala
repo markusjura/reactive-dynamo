@@ -16,7 +16,4 @@ class DynamoDBSourceTest extends FlatSpec with Matchers with TestConfig.Executor
     val source = DynamoDBSource(config)
     source should be(source)
   }
-
-
-
 }
